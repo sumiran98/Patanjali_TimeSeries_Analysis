@@ -1,5 +1,5 @@
 # Overview
-This repository contains the code and documentation for a time series analysis of PATANJALI stock data from 2018 to 2023. The analysis is conducted using R, and the results are presented in multiple formats, including an R Markdown file (R_Patanjali.Rmd), an HTML file (R_Patanjali.html), and a PDF file (Patanjali_Analysis_Report.pdf).
+This repository contains the code and documentation for a time series analysis of PATANJALI stock data from 2021 to 2023. The analysis is conducted using R, and the results are presented in multiple formats, including an R Markdown file (R_Patanjali.Rmd), an HTML file (R_Patanjali.html), and a PDF file (Patanjali_Analysis_Report.pdf).
 
 # Files
 R_Patanjali.Rmd: R Markdown file containing the code and detailed analysis steps.
