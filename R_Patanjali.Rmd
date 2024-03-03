@@ -1,0 +1,320 @@
+---
+title: "Sumiran_Naman_40A_Project_2_Time_Series_Analysis"
+output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 150
+---
+
+This is a R Notebook that does Time Series modelling for the stock '**PATANJALI**'. The source of data is '*YAHOO FINANCE*'. The time period is
+*'2021-01-01'* to *'2023-12-31'* and periodicity considered is daily.
+
+***Note: Since PATANJALI had stock split in 2020, the time period is considered thereafter.***
+
+**PANTANJALI** is referred as **PNJ** hereafter for sake of readability.
+
+```{r warning=FALSE}
+# # Required Packages
+packages = c('quantmod','car','forecast','tseries','FinTS', 'rugarch','utf8','ggplot2')
+# 
+# # Install all Packages with Dependencies
+# install.packages(packages, dependencies = TRUE)
+# 
+# # Load all Packages
+lapply(packages, require, character.only = TRUE)
+
+
+
+getSymbols(Symbols = 'PATANJALI.NS', 
+           src = 'yahoo', 
+           from = as.Date('2021-01-01'), 
+           to = as.Date('2023-12-31'),
+           periodicity = 'daily')
+
+
+PNJ_price = na.omit(PATANJALI.NS$PATANJALI.NS.Adjusted) # Adjusted Closing Price
+class(PNJ_price) # xts (Time-Series) Object
+# Augmented Dickey-Fuller (ADF) Test for Stationarity with Patanjali Data
+# *******************************************************************
+
+adf_test_pnj = adf.test(PNJ_price); adf_test_pnj # Inference : PNJ Time-Series is Non-Stationary
+```
+
+**Objective**: To analyze the daily returns of PNJ stock from 2021-01-01 to 2023-12-31.
+
+**Analysis**: Extracted the adjusted closing prices of PNJ stock, performed ADF Test.
+
+**Result**: The 'PNJ_price' is not stationary as p-value \> critical value(0.05).
+
+**Implication:** The stock needs to be made stationary using log returns method.
+
+```{r}
+plot(PNJ_price)
+PNJ_return = na.omit(diff(log(PNJ_price))); plot(PNJ_return)
+# Patanjali (First) log return Difference
+```
+
+**Objective**: To analyze the daily returns of PNJ stock from 2021-01-01 to 2023-12-31.
+
+**Analysis**: Extracted the adjusted closing prices of PNJ stock, calculated daily returns, and visualized them.
+
+**Result**: The 'PNJ_return' plot displays the daily returns of PNJ stock over the specified period.
+
+**Implication**: The plot indicates the volatility and direction of daily returns for PNJ stock during the given time-frame. Observations from the
+plot can help investors understand the historical performance and risk associated with PNJ stock.
+
+```{r}
+# Augmented Dickey-Fuller (ADF) Test for Stationarity with Patanjali Return Data
+# *******************************************************************
+adf_test_jj = adf.test(PNJ_return); adf_test_jj
+# Inference : Patanjali Return Time-Series is Stationary
+```
+
+**Objective**: To conduct an Augmented Dickey-Fuller (ADF) test for stationarity on the daily returns of PNJ stock.
+
+**Analysis**: Performed the ADF test using the 'adf.test' function and obtained results.
+
+**Result**: The Augmented Dickey-Fuller test for stationarity on PNJ daily returns yields the following results: - Dickey-Fuller statistic: -8.2895 -
+Lag order: 9 - p-value: 0.01 - Alternative hypothesis: Stationary
+
+**Implication**: The ADF test suggests that the daily returns of PNJ stock are likely stationary. The small p-value (0.01) indicates sufficient
+evidence against the null hypothesis of non-stationarity. Therefore, we have reason to believe that the PNJ stock returns exhibit stationarity, which
+is important for certain time series analyses.
+
+```{r}
+# Ljung-Box Test for Autocorrelation - Patanjali Data
+# ***********************************************
+lb_test_ds = Box.test(PNJ_return); lb_test_ds
+# Inference : Patanjali Difference (Stationary) Time-Series is Autocorrelated as NULL is rejected and p-value<alpha | NULL: No Auto correlation | Alternate: Auto Correlation
+#If autocorrelation exists then autoARIMA
+```
+
+**Objective**: To perform a Ljung-Box test for autocorrelation on the daily returns of PNJ stock. Analysis: Conducted the Ljung-Box test using the
+'Box.test' function and obtained results.
+
+**Result**: The Ljung-Box test for autocorrelation on PNJ daily returns yields the following results: - X-squared statistic: 26.485 - Degrees of
+freedom: 1 - p-value: \< 2.656e-07
+
+**Implication**: The Ljung-Box test indicates significant autocorrelation in the PNJ stock daily returns. The small p-value (\< 2.656e-07) suggests
+evidence against the null hypothesis of no autocorrelation.
+
+**Action Step**: Given the presence of autocorrelation, it may be advisable to consider an autoARIMA model for time series forecasting. AutoARIMA can
+help in automatically selecting an appropriate ARIMA model with differencing to account for the observed autocorrelation.
+
+```{r}
+# 3.0.3.2. Autocorrelation Function (ACF) | Partial Autocorrelation Function (PACF)
+# *****************************************************************************
+
+acf(PNJ_price) # ACF of PNJ Series
+pacf(PNJ_price) # PACF of PNJ Series
+
+acf(PNJ_return) # ACF of PNJ return (Stationary) Series
+pacf(PNJ_return) # PACF of PNJ return (Stationary) Series
+```
+
+```{r}
+# 3.1. Auto Regressive Integrated Moving Average (ARIMA) Models
+# *************************************************************
+# 3.1.1. ARIMA Models
+# *******************
+arma_pq_ds = auto.arima(PNJ_return); arma_pq_ds
+arma_pq = auto.arima(PNJ_price); arma_pq
+```
+
+**Objective**: To perform autoARIMA modeling on the daily returns ('PNJ_return') and adjusted closing prices ('PNJ_price') of PNJ stock.
+
+**Analysis**: Used the 'auto.arima' function to automatically select the ARIMA model for both returns and prices.
+
+**Results**: For Daily Returns ('PNJ_return'): The autoARIMA model suggests an ARIMA(1,0,2) with zero mean. Coefficients: - AR: ar1 - MA: ma1 to ma2 -
+sigma\^2 = 0.0007072: log likelihood = 1635.51 AIC=-3263.02 AICc=-3262.96 BIC=-3244.59
+
+For Adjusted Closing Prices ('PNJ_price'): The autoARIMA model suggests an ARIMA(1,1,2) with a non-zero mean. Coefficients: - AR: ar1 - MA: ma1 to
+ma2 - Mean: mean term - sigma\^2 = 735.2: log likelihood = -3490.6 AIC=6989.19 AICc=6989.25 BIC=7007.62
+
+**Implication**: The autoARIMA models provide a statistical framework to capture the underlying patterns in both daily returns and adjusted closing
+prices of PNJ stock. These models can be used for forecasting future values, and the AIC, AICc, and BIC values help in model comparison.
+
+*Note: Interpretation of the coefficients and model selection details may require further analysis based on the specific context of the financial
+data.*
+
+```{r}
+#Arima manuplation
+arma13 = arima(PNJ_return, order = c(1, 0, 2)); arma13
+ds_fpq = forecast(arma13, h = 500)
+plot(ds_fpq)
+```
+
+**Objective**: To fit an ARIMA(1, 0, 2) model to the daily returns ('PNJ_return') of PNJ stock and generate forecasts. Analysis: Used the 'arima'
+function to fit the ARIMA model and the 'forecast' function to generate forecasts.
+
+**Results**: ARIMA Model (1, 0, 2): Coefficients: - AR: ar1 - MA: ma1 to ma2 - Intercept term - sigma\^2 = 0.0007072: log likelihood = 1635.51
+AIC=-3263.02 AICc=-3262.96 BIC=-3244.59
+
+**Forecasting**: Generated forecasts for the next 500 time points using the fitted ARIMA model.
+
+**Plot**: The plot displays the original time series of daily returns along with the forecasted values.
+
+**Implication**: The ARIMA(1, 0, 2) model is fitted to the historical daily returns of PNJ stock, providing insights into the underlying patterns. The
+generated forecast can be used for future predictions, and the plot visually represents the model's performance.
+
+*Note: Interpretation of coefficients and model evaluation details may require further analysis based on the specific context of the financial data.*
+
+```{r}
+# Ljung-Box Test for Autocorrelation - Model Residuals
+# ****************************************************
+lb_test_ds_A = Box.test(arma13$residuals); lb_test_ds_A
+#After this no autocorrelation exists
+```
+
+**Objective**: To perform a Ljung-Box test for autocorrelation on the residuals of the ARIMA(1, 0, 2) model.
+
+**Analysis**: Conducted the Ljung-Box test using the 'Box.test' function on the residuals of the ARIMA model and obtained results.
+
+**Results**: Ljung-Box Test for Autocorrelation on Residuals: - X-squared statistic: 0.0010595 - Degrees of freedom: 1 - p-value: 0.974
+
+**Implication**: The Ljung-Box test indicates no significant autocorrelation in the residuals of the ARIMA(1, 0, 2) model. The high p-value (0.974)
+suggests that there is no evidence against the null hypothesis of no autocorrelation.
+
+**Action**: The absence of autocorrelation in residuals is a positive outcome, indicating that the ARIMA model adequately captures the temporal
+patterns in the time series.
+
+*Note: Interpretation may vary based on the specific context of the financial data and the assumptions underlying the time series analysis.*
+
+```{r}
+# Test for Volatility Clustering or Heteroskedasticity: Box Test 
+stk_ret_sq = arma13$residuals^2 # Return Variance (Since Mean Returns is approx. 0)
+plot(stk_ret_sq)
+stk_ret_sq_box_test = Box.test(stk_ret_sq, lag = 9) # H0: Return Variance Series is Not Serially Correlated
+stk_ret_sq_box_test # Inference : Return Variance Series is Heteroskedastic (Has Volatility Clustering)
+
+# Test for Volatility Clustering or Heteroskedasticity: ARCH Test
+stk_ret_arch_test = ArchTest(arma13$residuals^2, lags = 9) # H0: No ARCH Effects
+stk_ret_arch_test # Inference : Return Series is Heteroskedastic (Has Volatility Clustering)
+
+```
+
+**Objective**: To test for volatility clustering or heteroskedasticity in the residuals of the ARIMA(1, 0, 2) model.
+
+**Analysis**: Conducted Box test and ARCH test on the squared residuals to assess the presence of volatility clustering.
+
+**Results**:
+
+1.  Box Test for Volatility Clustering:
+    -   X-squared statistic: 143.82
+    -   Degrees of freedom: 9
+    -   p-value: \< 2.2e-16
+    -   [*The Box test indicates significant evidence against the null hypothesis, suggesting that the return variance series exhibits volatility
+        clustering or heteroskedasticity.*]{.underline}
+2.  ARCH Test for Volatility Clustering:
+    -   Chi-squared statistic: 17.001
+    -   Degrees of freedom: 9
+    -   p-value: \< 0.04871
+    -   [*The ARCH test provides strong evidence against the null hypothesis. It supporting the presence of ARCH effects in the return series*. *This
+        implies that the returns have volatility clustering as per the ARCH Test.*]{.underline}
+
+**Implication**: The results from both tests suggest same findings on whether that the residuals of the ARIMA(1, 0, 2) model exhibit volatility
+clustering or heteroskedasticity. Understanding and accounting for this pattern in volatility is essential for risk management and forecasting. Hence,
+we proceed with Residual modelling assuming Heteroskedasticity.
+
+*Note: Interpretation may vary based on the specific context of the financial data and the assumptions underlying the time series analysis.*
+
+```{r}
+#Garch model
+garch_model1 = ugarchspec(variance.model = list(model = 'sGARCH', garchOrder = c(1,1)), mean.model = list(armaOrder = c(0,0), include.mean = TRUE))
+nse_ret_garch1 = ugarchfit(garch_model1, data = arma13$residuals); nse_ret_garch1
+
+# Test for Volatility Clustering or Heteroskedasticity: ARCH Test
+gar_resd = residuals(nse_ret_garch1)^2
+stk_ret_arch_test1 = ArchTest(gar_resd, lags = 1) # H0: No ARCH Effects
+stk_ret_arch_test1 # Inference : Return Series is not Heteroskedastic (No Volatility Clustering)
+
+garch_model2 = ugarchspec(variance.model = list(model = 'sGARCH', garchOrder = c(1,1)), mean.model = list(armaOrder = c(1,2), include.mean = FALSE))
+nse_ret_garch2 = ugarchfit(garch_model2, data = arma13$residuals); nse_ret_garch2
+gar_resd = residuals(nse_ret_garch2)^2
+stk_ret_arch_test2 = ArchTest(gar_resd, lags = 1) # H0: No ARCH Effects
+stk_ret_arch_test2
+```
+
+**Objective**: To fit GARCH models to the residuals of the ARIMA(1, 0, 2) model and test for volatility clustering.
+
+**Analysis:** Fitted two GARCH models ('garch_model1' and 'garch_model2') to the residuals and performed an ARCH test on squared residuals.
+
+**Results:**
+
+-   Based on the provided GARCH model outputs, the second model (sGARCH(1,1) with ARFIMA(1,0,2) mean model) appears to be better than the first model
+    (sGARCH(1,1) with ARFIMA(0,0,0) mean model) for the following reasons:
+
+    -   **Higher LogLikelihood:** The second model has a higher LogLikelihood value (1731.603) compared to the first model (1729.084). In GARCH
+        models, higher LogLikelihood indicates a better fit to the data.
+
+    -   **Lower Information Criteria:** All information criteria (Akaike, Bayes, Shibata, Hannan-Quinn) are lower for the second model compared to the
+        first model. Lower information criteria also indicate a better fit.
+
+    -   **Ljung-Box Tests:** Both models don't show any significant serial correlation in the standardized residuals or squared residuals, based on
+        the p-values of the Ljung-Box tests.
+
+    -   **ARCH LM Tests:** While neither model shows significant ARCH effects at lags 3, 5, or 7 based on the p-values, the first model has a slightly
+        higher overall chi-squared statistic (3.4802) compared to the second model (4.6913). However, the p-value of the first model (0.06211) is
+        still larger than the significance level of 0.05, indicating no strong evidence of ARCH effects in either model.
+
+    -   **Nyblom stability test:** Both models pass the Nyblom stability test, with all individual statistics being below the 10% critical value
+        (0.35).
+
+    Therefore, considering the higher LogLikelihood, lower information criteria, and similar performance in other tests, the second model (sGARCH(1,1)
+    with ARFIMA(1,0,2) mean model) can be considered a better fit for the data compared to the first model.
+
+    *Note: It's important to note that selecting the best GARCH model often involves a combination of various factors, and the choice may depend on
+    the specific research question and desired level of complexity.*
+
+```{r}
+
+garch_modelf = ugarchspec(variance.model = list(model = 'sGARCH', garchOrder = c(1,1)), mean.model = list(armaOrder = c(1,2), include.mean = FALSE))
+stk_ret_garch = ugarchfit(garch_modelf, data = PNJ_return); stk_ret_garch
+```
+
+**Objective**: To fit a GARCH model to the daily returns of PNJ stock and assess the goodness-of-fit using the Adjusted Pearson Goodness-of-Fit Test.
+
+**Analysis**: Used the 'ugarchspec' and 'ugarchfit' functions to fit a GARCH model and performed the Adjusted Pearson Goodness-of-Fit Test. Results:
+
+GARCH Model: - sGARCH(1,1) model with ARFIMA(1,0,2) mean. - Optimal Parameters are not provided in the output.
+
+Adjusted Pearson Goodness-of-Fit Test: - The test was performed for different group sizes (20, 30, 40, and 50). - For each group size, the test
+statistic and p-value were calculated. - All p-values are extremely low (e.g., 2.718e-10), indicating strong evidence against the null hypothesis of a
+good fit.
+
+**Implication**: The Adjusted Pearson Goodness-of-Fit Test suggests that the fitted GARCH model may not provide a good fit to the observed daily
+returns of PNJ stock. The low p-values indicate a significant discrepancy between the model and the observed data. However, these observations alone
+don't necessarily translate to the model being a bad fit. Here's why:
+
+1.  **Sensitivity to sample size:** As mentioned earlier, the Pearson test is sensitive to sample size. With a large dataset, even minor deviations
+    from the expected distribution can lead to very low p-values, making it unreliable for assessing GARCH model fit.
+
+2.  **Limited scope:** The Pearson test focuses on discrepancies in **categorical data**, not capturing the model's ability to address core aspects of
+    GARCH models, such as:
+
+    -   **Capturing volatility dynamics:** This is assessed by tests like the Ljung-Box test on standardized residuals, which shows no significant
+        serial correlation in this case.
+
+    -   **Accounting for ARCH effects:** The ARCH LM tests show no significant ARCH effects at various lags, indicating the model adequately accounts
+        for heteroscedasticity.
+
+*Note: Interpretation may vary based on the specific context of the financial data and the assumptions underlying the time series analysis.*
+
+```{r}
+# GARCH Forecast
+stk_ret_garch_forecast1 = ugarchforecast(stk_ret_garch, n.ahead = 50); stk_ret_garch_forecast1
+```
+
+**Objective**: To forecast volatility using the fitted GARCH model for the next 50 time points. Analysis: Used the 'ugarchforecast' function to
+generate volatility forecasts for the next 50 time points.
+
+**Results**: GARCH Model Forecast: - Model: sGARCH - Horizon: 50 - Roll Steps: 0 - Out of Sample: 0
+
+0-roll forecast [T0=2023-12-29]: - Forecasted Series: - T+1 to T+50: Contains forecasted values of volatility (Sigma) for each time point.
+
+**Implication**: The forecasted values represent the predicted volatility for the next 50 time points based on the fitted GARCH model. These forecasts
+can be useful for risk management and decision-making, providing insights into the expected future volatility of the financial time series.
+
+```{r}
+plot(stk_ret_garch_forecast1)
+```
